@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Music Manager{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <h1>Profile - {{ username }}</h1>
+    
+    <div class="info-box">
+        <p><strong>Last Download:</strong> {{ last_download }}</p>
+        <p>Your music will be automatically downloaded from your SoundCloud likes once per day.</p>
+    </div>
+    
+    <form method="post" class="profile-form">
+        <div class="form-group">
+            <label for="soundcloud_url">SoundCloud Likes URL:</label>
+            <input type="url" id="soundcloud_url" name="soundcloud_url" 
+                   placeholder="https://soundcloud.com/your-username/likes" 
+                   value="{{ soundcloud_url }}">
+            <small>Example: https://soundcloud.com/your-username/likes</small>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Save SoundCloud URL</button>
+            <a href="/" class="btn-secondary">Back to Music Library</a>
+        </div>
+    </form>
+    
+    {% if log_files_available %}
+    <div class="logs-section">
+        <h2>Download History</h2>
+        <p>View your download logs to see when and what was downloaded.</p>
+        <a href="{{ url_for('view_logs') }}" class="btn-logs">View Download Logs</a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .profile-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .profile-container h1 {
+        margin-bottom: 30px;
+        color: #333;
+    }
+    
+    .info-box {
+        background: #f0f0f0;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 30px;
+    }
+    
+    .info-box p {
+        margin: 10px 0;
+        color: #555;
+    }
+    
+    .profile-form {
+        background: white;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin-bottom: 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .form-group input {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-sizing: border-box;
+        font-size: 14px;
+    }
+    
+    .form-group input:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 5px rgba(0,123,255,0.3);
+    }
+    
+    .form-group small {
+        display: block;
+        margin-top: 5px;
+        color: #999;
+        font-size: 12px;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-primary, .btn-secondary, .btn-logs {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+        font-size: 14px;
+        transition: background-color 0.3s;
+        display: inline-block;
+    }
+    
+    .btn-primary {
+        background: #007bff;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #0056b3;
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background: #545b62;
+    }
+    
+    .logs-section {
+        background: #e7f3ff;
+        padding: 20px;
+        border: 1px solid #b3d9ff;
+        border-radius: 5px;
+    }
+    
+    .logs-section h2 {
+        margin-top: 0;
+        color: #004085;
+        font-size: 18px;
+    }
+    
+    .logs-section p {
+        color: #004085;
+        margin-bottom: 15px;
+    }
+    
+    .btn-logs {
+        background: #0056b3;
+        color: white;
+        padding: 12px 24px;
+        font-weight: bold;
+    }
+    
+    .btn-logs:hover {
+        background: #003d82;
+    }
+    
+    @media (max-width: 768px) {
+        .profile-container {
+            padding: 10px;
+        }
+        
+        .form-actions {
+            flex-direction: column;
+        }
+        
+        .btn-primary, .btn-secondary, .btn-logs {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}

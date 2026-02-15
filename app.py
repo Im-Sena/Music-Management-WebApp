@@ -12,9 +12,15 @@ import hashlib
 from apscheduler.schedulers.background import BackgroundScheduler
 from download_service import run_scheduled_downloads
 
+# DB初期化・マイグレーション
+from init_db import init_database
+
 # ==============================
 # Flaskアプリを作成
 # ==============================
+# アプリ起動時にDBを初期化
+init_database()
+
 app = Flask(__name__)
 app.secret_key = "your-secret-key-change-this"  # 本番環境では環境変数から読み込む
 
@@ -238,33 +244,10 @@ def profile():
             UPDATE users SET soundcloud_url = ? WHERE id = ?
         """, (soundcloud_url, user_id))
         conn.commit()
-        
-        # 現在のURLを取得
-        c.execute("SELECT soundcloud_url FROM users WHERE id = ?", (user_id,))
-        current_url = c.fetchone()[0]
         conn.close()
         
-        return f"""
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 40px; }}
-            .container {{ max-width: 600px; margin: 0 auto; }}
-            .success {{ color: #28a745; margin-bottom: 20px; }}
-            input {{ display: block; width: 100%; margin: 10px 0; padding: 8px; }}
-            button {{ padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }}
-            button:hover {{ background: #0056b3; }}
-            .back-link {{ margin-top: 20px; }}
-            .back-link a {{ color: #007bff; text-decoration: none; }}
-        </style>
-        <div class="container">
-            <h1>Profile - {username}</h1>
-            <div class="success">✓ SoundCloud URL updated successfully!</div>
-            <p>Current URL: <strong>{current_url if current_url else 'Not set'}</strong></p>
-            <p>Your music will be automatically downloaded from this URL once per day.</p>
-            <div class="back-link">
-                <a href="/">Back to Music Library</a>
-            </div>
-        </div>
-        """
+        # 更新後、同じページにリダイレクト（更新完了メッセージを表示する場合は別途実装）
+        return redirect(url_for("profile"))
     
     # GET リクエスト：プロフィール表示
     conn = sqlite3.connect("music.db")
@@ -278,41 +261,22 @@ def profile():
     soundcloud_url = result[0] if result and result[0] else ""
     last_download = result[1] if result and result[1] else "Never"
     
-    return f"""
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 40px; }}
-        .container {{ max-width: 600px; margin: 0 auto; }}
-        .form-group {{ margin-bottom: 20px; }}
-        label {{ display: block; margin-bottom: 5px; font-weight: bold; }}
-        input {{ display: block; width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; }}
-        button {{ padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; }}
-        button:hover {{ background: #0056b3; }}
-        .info {{ background: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
-        .info p {{ margin: 10px 0; }}
-        .back-link {{ margin-top: 20px; }}
-        .back-link a {{ color: #007bff; text-decoration: none; }}
-    </style>
-    <div class="container">
-        <h1>Profile - {username}</h1>
-        
-        <div class="info">
-            <p><strong>Last Download:</strong> {last_download}</p>
-            <p>Your music will be automatically downloaded from your SoundCloud likes once per day.</p>
-        </div>
-        
-        <form method="post">
-            <div class="form-group">
-                <label for="soundcloud_url">SoundCloud Likes URL:</label>
-                <input type="url" id="soundcloud_url" name="soundcloud_url" 
-                       placeholder="https://soundcloud.com/your-username/likes" 
-                       value="{soundcloud_url}">
-                <small>Example: https://soundcloud.com/your-username/likes</small>
-            </div>
-            <button type="submit">Save SoundCloud URL</button>
-            <a href="/" style="color: #007bff; text-decoration: none;">Back to Music Library</a>
-        </form>
-    </div>
-    """
+    # ログファイルがあるか確認
+    logs_dir = "logs"
+    log_files_available = False
+    if os.path.exists(logs_dir):
+        for filename in os.listdir(logs_dir):
+            if filename.startswith(f"download_{username}_") and filename.endswith(".log"):
+                log_files_available = True
+                break
+    
+    return render_template(
+        "profile.html",
+        username=username,
+        soundcloud_url=soundcloud_url,
+        last_download=last_download,
+        log_files_available=log_files_available
+    )
 
 
 # === トップページ（曲一覧・検索）===
@@ -484,6 +448,62 @@ def player(song_id):
         next_song=next_song,
         current_index=current_index,
         total_songs=total_songs
+    )
+
+
+# ======================================================
+# ダウンロードログビューア
+# ======================================================
+@app.route("/logs")
+def view_logs():
+    """
+    ユーザーのダウンロードログを表示
+    ログファイル: logs/download_[username]_[date].log
+    """
+    user_id = get_current_user_id()
+    if not user_id:
+        return redirect(url_for("login"))
+    
+    # ユーザー情報を取得
+    conn = sqlite3.connect("music.db")
+    c = conn.cursor()
+    c.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+    result = c.fetchone()
+    conn.close()
+    
+    if not result:
+        abort(404)
+    
+    username = result[0]
+    
+    # ログディレクトリから該当ユーザーのログファイルを探す
+    logs_dir = "logs"
+    log_files = []
+    
+    if os.path.exists(logs_dir):
+        for filename in os.listdir(logs_dir):
+            # logs/download_[username]_[date].log の形式
+            if filename.startswith(f"download_{username}_") and filename.endswith(".log"):
+                log_files.append(filename)
+    
+    # ファイルを日付の降順でソート（新しい順）
+    log_files.sort(reverse=True)
+    
+    # 各ログファイルの内容を読み込み
+    logs_content = {}
+    for filename in log_files:
+        log_path = os.path.join(logs_dir, filename)
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                logs_content[filename] = f.read()
+        except Exception as e:
+            logs_content[filename] = f"Error reading log: {str(e)}"
+    
+    return render_template(
+        "logs.html",
+        username=username,
+        log_files=log_files,
+        logs_content=logs_content
     )
 
 

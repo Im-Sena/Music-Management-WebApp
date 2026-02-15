@@ -8,6 +8,29 @@ from datetime import datetime
 # 登録時またはスケジュール実行時に呼び出される
 # ====================================================================
 
+def log_message(username, message):
+    """
+    ダウンロード処理のログをファイルに記録
+    
+    ログファイル: logs/download_[username]_[date].log
+    """
+    # ログディレクトリが無ければ作成
+    os.makedirs("logs", exist_ok=True)
+    
+    # ログファイルパス（日付ごとに分割）
+    today = datetime.now().strftime("%Y-%m-%d")
+    log_file = f"logs/download_{username}_{today}.log"
+    
+    # タイムスタンプ付きでメッセージをログに追記
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    log_entry = f"[{timestamp}] {message}\n"
+    
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(log_entry)
+    
+    # コンソールにも出力
+    print(log_entry.strip())
+
 def download_and_scan_user(user_id, username, soundcloud_url):
     """
     ユーザーのSoundCloud likes から音楽をダウンロードしてスキャン
@@ -32,10 +55,7 @@ def download_and_scan_user(user_id, username, soundcloud_url):
     music_dir = f"/home/sena/SoundCloud/{username}"
     
     # === ログ出力 ===
-    print(f"\n{'='*60}")
-    print(f"Starting download for user: {username}")
-    print(f"URL: {soundcloud_url}")
-    print(f"{'='*60}")
+    log_message(username, f"Starting download - URL: {soundcloud_url}")
     
     # === yt-dlp コマンド構築 ===
     # -x: 音声抽出（MP3等に変換）
@@ -61,19 +81,23 @@ def download_and_scan_user(user_id, username, soundcloud_url):
         
         # ダウンロードエラーチェック
         if result.returncode != 0:
-            print(f"Error downloading: {result.stderr}")
+            error_msg = result.stderr[:200]  # 最初の200字に制限
+            log_message(username, f"Download error: {error_msg}")
             return
         
-        print(f"Download successful: {result.stdout}")
+        log_message(username, "Download successful via yt-dlp")
         
         # === Step 2: scan.py を実行して メタデータ抽出 & DB登録 ===
         # scan.py が MP3ファイルのID3タグを読み取り、DBに登録
-        print(f"Scanning music files...")
+        log_message(username, "Scanning music files for metadata...")
         cmd_scan = [
             "python", "scan.py", username
         ]
         result_scan = subprocess.run(cmd_scan, capture_output=True, text=True)
-        print(f"Scan output: {result_scan.stdout}")
+        if result_scan.returncode == 0:
+            log_message(username, "Scan completed successfully")
+        else:
+            log_message(username, f"Scan warning: {result_scan.stderr[:100]}")
         
         # === Step 3: DB更新：last_download タイムスタンプ ===
         # ダウンロード完了時刻を記録（ISO 8601形式）
@@ -85,14 +109,14 @@ def download_and_scan_user(user_id, username, soundcloud_url):
         conn.commit()
         conn.close()
         
-        print(f"[{username}] Download and scan completed successfully!")
+        log_message(username, "Download and scan completed successfully!")
         
     # ダウンロードが1時間を超えた場合のタイムアウト処理
     except subprocess.TimeoutExpired:
-        print(f"[{username}] Download timeout (> 1 hour)")
+        log_message(username, "Download timeout (exceeded 1 hour limit)")
     # その他のエラーをキャッチ（ファイルI/O等）
     except Exception as e:
-        print(f"[{username}] Error: {str(e)}")
+        log_message(username, f"Error: {str(e)}")
 
 
 # ====================================================================
@@ -127,6 +151,7 @@ def run_scheduled_downloads():
     
     # 各ユーザーのダウンロードを順番に実行
     for user_id, username, soundcloud_url in users:
+        log_message(username, "Scheduled download started")
         download_and_scan_user(user_id, username, soundcloud_url)
 
 
