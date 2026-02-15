@@ -1,6 +1,9 @@
 # Database
 music.db
 
+# Static files (generated thumbnails, uploads, etc.)
+static/
+
 # Virtual Environment
 venv/
 env/
