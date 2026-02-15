@@ -1,35 +1,35 @@
 {% extends "base.html" %}
 
-{% block title %}Profile - Music Manager{% endblock %}
+{% block title %}プロフィール - ULTRA ARCHIVES{% endblock %}
 
 {% block content %}
 <div class="profile-container">
-    <h1>Profile - {{ username }}</h1>
+    <h1>プロフィール - {{ username }}</h1>
     
     <div class="info-box">
-        <p><strong>Last Download:</strong> {{ last_download }}</p>
-        <p>Your music will be automatically downloaded from your SoundCloud likes once per day.</p>
+        <p><strong>最後のダウンロード:</strong> {{ last_download }}</p>
+        <p>SoundCloud のいいね曲は毎日自動的にダウンロードされます。</p>
     </div>
     
     <form method="post" class="profile-form">
         <div class="form-group">
-            <label for="soundcloud_url">SoundCloud Likes URL:</label>
+            <label for="soundcloud_url">SoundCloud いいね URL:</label>
             <input type="url" id="soundcloud_url" name="soundcloud_url" 
                    placeholder="https://soundcloud.com/your-username/likes" 
                    value="{{ soundcloud_url }}">
-            <small>Example: https://soundcloud.com/your-username/likes</small>
+            <small>例: https://soundcloud.com/your-username/likes</small>
         </div>
         <div class="form-actions">
-            <button type="submit" class="btn-primary">Save SoundCloud URL</button>
-            <a href="/" class="btn-secondary">Back to Music Library</a>
+            <button type="submit" class="btn-primary">SoundCloud URL を保存</button>
+            <a href="/" class="btn-secondary">ライブラリに戻る</a>
         </div>
     </form>
     
     {% if log_files_available %}
     <div class="logs-section">
-        <h2>Download History</h2>
-        <p>View your download logs to see when and what was downloaded.</p>
-        <a href="{{ url_for('view_logs') }}" class="btn-logs">View Download Logs</a>
+        <h2>ダウンロード履歴</h2>
+        <p>ダウンロード履歴を確認して、何がいつダウンロードされたかを確認します。</p>
+        <a href="{{ url_for('view_logs') }}" class="btn-logs">ダウンロード履歴を表示</a>
     </div>
     {% endif %}
 </div>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Music Library - Music Management{% endblock %}
+{% block title %}ライブラリ - ULTRA ARCHIVES{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/library.css') }}">
@@ -10,20 +10,20 @@
 <div class="library-page">
     <!-- ヘッダー部分 -->
     <div class="header">
-        <h1>🎵 Music Library</h1>
+        <h1>音楽ライブラリ</h1>
         <div class="header-right">
-            <span class="user-info">Logged in as: <strong>{{ session.get('username') }}</strong></span>
-            <a href="/profile" class="nav-link">Profile</a>
+            <span class="user-info">ログイン中: <strong>{{ session.get('username') }}</strong></span>
+            <a href="/profile" class="nav-link">プロフィール</a>
         </div>
     </div>
 
     <!-- 検索フォーム -->
     <div class="search-section">
         <form method="get" class="search-form">
-            <input type="text" name="q" placeholder="Search by title, artist, or album..." value="{{ q }}">
-            <button type="submit" class="btn btn-primary">Search</button>
+            <input type="text" name="q" placeholder="曲名、アーティスト、アルバムで検索..." value="{{ q }}">
+            <button type="submit" class="btn btn-primary">検索</button>
             {% if q %}
-                <a href="/" class="btn btn-secondary">Clear</a>
+                <a href="/" class="btn btn-secondary">クリア</a>
             {% endif %}
         </form>
     </div>
@@ -31,8 +31,8 @@
     <!-- 曲がない場合 -->
     {% if not songs %}
     <div class="empty-state">
-        <p>📭 No songs found</p>
-        <p><a href="/profile">Add your SoundCloud URL to start downloading</a></p>
+        <p>曲が見つかりません</p>
+        <p><a href="/profile">SoundCloud URL を追加してダウンロード開始</a></p>
     </div>
     {% else %}
     <!-- 曲一覧 -->
@@ -44,13 +44,13 @@
             <div class="song-thumbnail">
                 <img src="/image/{{ song[0] }}" alt="Album art">
                 <div class="play-overlay">
-                    <a href="/player/{{ song[0] }}" class="play-button">▶ Play</a>
+                    <a href="/player/{{ song[0] }}" class="play-button">再生</a>
                 </div>
             </div>
             {% else %}
             <div class="song-thumbnail no-image">
                 <div class="play-overlay">
-                    <a href="/player/{{ song[0] }}" class="play-button">▶ Play</a>
+                    <a href="/player/{{ song[0] }}" class="play-button">再生</a>
                 </div>
             </div>
             {% endif %}
@@ -65,19 +65,19 @@
                 </p>
                 {% endif %}
                 {% if song[5] %}
-                <p class="song-genre"><small>Genre: {{ song[5] }}</small></p>
+                <p class="song-genre"><small>ジャンル: {{ song[5] }}</small></p>
                 {% endif %}
             </div>
 
             <!-- アクション -->
             <div class="song-actions">
-                <a href="/player/{{ song[0] }}" class="btn btn-sm btn-primary">Play</a>
-                <a href="/download/{{ song[0] }}" class="btn btn-sm btn-secondary">Download</a>
+                <a href="/player/{{ song[0] }}" class="btn btn-sm btn-primary">再生</a>
+                <a href="/download/{{ song[0] }}" class="btn btn-sm btn-secondary">DL</a>
             </div>
         </div>
         {% endfor %}
     </div>
-    <p class="song-count">Total: {{ songs|length }} songs</p>
+    <p class="song-count">合計: {{ songs|length }} 曲</p>
     {% endif %}
 </div>
 {% endblock %}

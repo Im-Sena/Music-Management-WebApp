@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Music Management{% endblock %}</title>
+    <title>{% block title %}ULTRA ARCHIVES{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
@@ -12,16 +12,16 @@
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-brand">
-                <a href="/">🎵 Music Management</a>
+                <a href="/">ULTRA ARCHIVES</a>
             </div>
             <div class="nav-menu">
                 {% if session.get('user_id') %}
-                    <a href="/" class="nav-link">Library</a>
-                    <a href="/profile" class="nav-link">Profile</a>
-                    <a href="/logout" class="nav-link">Logout</a>
+                    <a href="/" class="nav-link">ライブラリ</a>
+                    <a href="/profile" class="nav-link">プロフィール</a>
+                    <a href="/logout" class="nav-link">ログアウト</a>
                 {% else %}
-                    <a href="/login" class="nav-link">Login</a>
-                    <a href="/register" class="nav-link">Register</a>
+                    <a href="/login" class="nav-link">ログイン</a>
+                    <a href="/register" class="nav-link">登録</a>
                 {% endif %}
             </div>
         </div>
@@ -34,7 +34,7 @@
 
     <!-- フッター -->
     <footer class="footer">
-        <p>&copy; 2026 Music Management. All rights reserved.</p>
+        <p>&copy; 2026 ULTRA ARCHIVES. All rights reserved.</p>
     </footer>
 
     {% block extra_js %}{% endblock %}

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Download Logs - Music Manager{% endblock %}
+{% block title %}ダウンロード履歴 - ULTRA ARCHIVES{% endblock %}
 
 {% block content %}
 <div class="logs-container">
-    <h2>Download Logs for {{ username }}</h2>
+    <h2>{{ username }} のダウンロード履歴</h2>
     
     {% if log_files %}
         <div class="logs-list">
@@ -16,11 +16,11 @@
             {% endfor %}
         </div>
     {% else %}
-        <p class="no-logs">No logs found yet. Download your music to see logs here.</p>
+        <p class="no-logs">ログはまだありません。音楽をダウンロードするとログが表示されます。</p>
     {% endif %}
     
     <div class="back-link">
-        <a href="{{ url_for('profile') }}">&larr; Back to Profile</a>
+        <a href="{{ url_for('profile') }}">&larr; プロフィールに戻る</a>
     </div>
 </div>
 

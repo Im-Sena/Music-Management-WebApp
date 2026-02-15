@@ -119,6 +119,7 @@ https://soundcloud.com/your-username/likes
 ├── download_service.py      # SoundCloud ダウンロード・スケジュール処理
 ├── scan.py                 # MP3 メタデータ抽出・DB登録
 ├── add_user.py             # ユーザー作成用スクリプト（CLI）
+├── reset_password.py       # パスワード変更用スクリプト（CLI）
 ├── migrate_db.py           # DB マイグレーション（オプション）
 ├── requirements.txt        # Python 依存パッケージ一覧
 ├── templates/              # Jinja2 HTML テンプレート
@@ -224,6 +225,20 @@ python add_user.py john
 
 # またはコマンドラインで直接指定
 python add_user.py john password123
+```
+
+### パスワード変更・リセット
+
+ユーザーがパスワードを忘れた場合、CLI で新しいパスワードを設定できます：
+
+```bash
+# ユーザー john のパスワードをリセット
+python reset_password.py john
+
+# プロンプトで新しいパスワードを入力
+新しいパスワードを入力: ****
+パスワードを再入力: ****
+✓ パスワードが正常に変更されました
 ```
 
 ## トラブルシューティング

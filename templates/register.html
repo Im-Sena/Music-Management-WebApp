@@ -1,38 +1,38 @@
 {% extends "base.html" %}
 
-{% block title %}Register - Music Management{% endblock %}
+{% block title %}登録 - ULTRA ARCHIVES{% endblock %}
 
 {% block content %}
 <div class="page-register">
     <div class="form-container">
-        <h1>Create Account</h1>
+        <h1>アカウント作成</h1>
         <form method="post" class="auth-form">
             <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" placeholder="Enter your username" required>
+                <label for="username">ユーザー名</label>
+                <input type="text" id="username" name="username" placeholder="ユーザー名を入力" required>
             </div>
 
             <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                <label for="password">パスワード</label>
+                <input type="password" id="password" name="password" placeholder="パスワードを入力" required>
             </div>
 
             <div class="form-group">
-                <label for="confirm_password">Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+                <label for="confirm_password">パスワード確認</label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="パスワードを再入力" required>
             </div>
 
             <div class="form-group">
-                <label for="soundcloud_url">SoundCloud URL (Optional)</label>
+                <label for="soundcloud_url">SoundCloud URL (オプション)</label>
                 <input type="url" id="soundcloud_url" name="soundcloud_url" placeholder="https://soundcloud.com/your-username/likes">
-                <small class="help-text">Enter your SoundCloud likes URL to start downloading immediately</small>
+                <small class="help-text">SoundCloud のいいね URL を入力すると登録時に自動ダウンロード開始</small>
             </div>
 
-            <button type="submit" class="btn btn-primary">Register</button>
+            <button type="submit" class="btn btn-primary">登録</button>
         </form>
 
         <div class="auth-footer">
-            <p>Already have an account? <a href="/login">Login here</a></p>
+            <p>アカウントをお持ちですか? <a href="/login">こちらからログイン</a></p>
         </div>
     </div>
 </div>

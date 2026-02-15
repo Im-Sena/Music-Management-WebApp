@@ -4,6 +4,9 @@ music.db
 # Static files (generated thumbnails, uploads, etc.)
 static/
 
+# Logs
+logs/
+
 # Virtual Environment
 venv/
 env/

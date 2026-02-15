@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Now Playing - Music Management{% endblock %}
+{% block title %}再生中 - ULTRA ARCHIVES{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
@@ -8,7 +8,7 @@
 
 {% block content %}
 <div class="player-page">
-    <a href="/" class="back-link">&larr; Back to Library</a>
+    <a href="/" class="back-link">&larr; ライブラリに戻る</a>
     
     <div class="player-container">
         <!-- プレイヤーのメイン部分 -->
@@ -19,7 +19,7 @@
                 <img src="/image/{{ song[0] }}" alt="Album art" class="album-art">
                 {% else %}
                 <div class="album-art no-image">
-                    <span>🎵</span>
+                    <span>♪</span>
                 </div>
                 {% endif %}
             </div>
@@ -37,7 +37,7 @@
                 </p>
                 {% endif %}
                 {% if song[5] %}
-                <p class="song-genre"><small>Genre: {{ song[5] }}</small></p>
+                <p class="song-genre"><small>ジャンル: {{ song[5] }}</small></p>
                 {% endif %}
             </div>
 
@@ -45,7 +45,7 @@
             <div class="player-controls">
                 <audio id="audioPlayer" controls style="width: 100%;">
                     <source src="/download/{{ song[0] }}?stream=true" type="audio/mpeg">
-                    Your browser does not support the audio element.
+                    ブラウザがオーディオ要素をサポートしていません。
                 </audio>
             </div>
 
@@ -60,24 +60,24 @@
             <!-- プレイリストナビゲーション -->
             {% if prev_song %}
             <div class="playlist-nav">
-                <a href="/player/{{ prev_song[0] }}" class="btn btn-sm">⏮ Previous</a>
+                <a href="/player/{{ prev_song[0] }}" class="btn btn-sm">前へ</a>
                 <span class="song-counter">{{ current_index + 1 }} / {{ total_songs }}</span>
                 {% if next_song %}
-                <a href="/player/{{ next_song[0] }}" class="btn btn-sm">Next ⏭</a>
+                <a href="/player/{{ next_song[0] }}" class="btn btn-sm">次へ</a>
                 {% endif %}
             </div>
             {% endif %}
 
             <!-- ダウンロードボタン -->
             <div class="download-section">
-                <a href="/download/{{ song[0] }}" class="btn btn-secondary">⬇ Download</a>
+                <a href="/download/{{ song[0] }}" class="btn btn-secondary">ダウンロード</a>
             </div>
         </div>
 
         <!-- 次の曲プレビュー -->
         {% if next_song %}
         <div class="next-song-preview">
-            <h3>Next Song</h3>
+            <h3>次の曲</h3>
             <div class="preview-card">
                 {% if next_song[7] %}
                 <img src="/image/{{ next_song[0] }}" alt="Next album art" class="preview-thumbnail">
@@ -85,7 +85,7 @@
                 <div>
                     <p class="preview-title">{{ next_song[1] }}</p>
                     <p class="preview-artist">{{ next_song[2] }}</p>
-                    <a href="/player/{{ next_song[0] }}" class="btn btn-sm btn-primary">Play Now</a>
+                    <a href="/player/{{ next_song[0] }}" class="btn btn-sm btn-primary">再生</a>
                 </div>
             </div>
         </div>

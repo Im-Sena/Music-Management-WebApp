@@ -77,9 +77,9 @@ def register():
                 .error { color: #dc3545; margin-bottom: 20px; }
             </style>
             <div class="error">
-                <h2>Error</h2>
-                <p>Username and password are required</p>
-                <a href="/register">Back to Register</a>
+                <h2>エラー</h2>
+                <p>ユーザー名とパスワードは必須です</p>
+                <a href="/register">登録に戻る</a>
             </div>
             """
         
@@ -91,9 +91,9 @@ def register():
                 .error { color: #dc3545; margin-bottom: 20px; }
             </style>
             <div class="error">
-                <h2>Error</h2>
-                <p>Passwords do not match</p>
-                <a href="/register">Back to Register</a>
+                <h2>エラー</h2>
+                <p>パスワードが一致しません</p>
+                <a href="/register">登録に戻る</a>
             </div>
             """
         
@@ -148,11 +148,11 @@ def register():
                     .success { color: #28a745; }
                 </style>
                 <div class="success">
-                    <h2>Registration Successful!</h2>
-                    <p>User created successfully.</p>
-                    <p><strong>Your SoundCloud likes are being downloaded in the background.</strong></p>
-                    <p>Check your profile later to see the download progress.</p>
-                    <a href="/login">Go to Login</a>
+                    <h2>登録完了!</h2>
+                    <p>ユーザーが正常に作成されました。</p>
+                    <p><strong>SoundCloud のいいね曲がバックグラウンドでダウンロード中です。</strong></p>
+                    <p>後でプロフィールを確認してダウンロード進度を確認できます。</p>
+                    <a href="/login">ログインページへ</a>
                 </div>
                 """
             # URLが指定されなかった場合は、後で /profile から追加できることを説明
@@ -163,10 +163,10 @@ def register():
                     .success { color: #28a745; }
                 </style>
                 <div class="success">
-                    <h2>Registration Successful!</h2>
-                    <p>User created successfully. You can now log in.</p>
-                    <p>You can add your SoundCloud URL later in your profile to start downloading.</p>
-                    <a href="/login">Go to Login</a>
+                    <h2>登録完了!</h2>
+                    <p>ユーザーが正常に作成されました。ログインできるようになりました。</p>
+                    <p>プロフィールから後で SoundCloud URL を追加してダウンロード開始できます。</p>
+                    <a href="/login">ログインページへ</a>
                 </div>
                 """
             
@@ -180,9 +180,9 @@ def register():
                 .error { color: #dc3545; margin-bottom: 20px; }
             </style>
             <div class="error">
-                <h2>Error</h2>
-                <p>Username already exists</p>
-                <a href="/register">Back to Register</a>
+                <h2>エラー</h2>
+                <p>このユーザー名は既に使用されています</p>
+                <a href="/register">登録に戻る</a>
             </div>
             """
     
@@ -214,9 +214,9 @@ def login():
             return redirect(url_for("index"))
         else:
             return """
-            <h2>Login Failed</h2>
-            <p>Invalid username or password</p>
-            <a href="/login">Back to Login</a>
+            <h2>ログイン失敗</h2>
+            <p>ユーザー名またはパスワードが正しくありません</p>
+            <a href="/login">ログインに戻る</a>
             """
     
     # ログイン画面を表示（テンプレートから）
