@@ -12,7 +12,8 @@ CREATE TABLE songs (
     album TEXT,
     year TEXT,
     genre TEXT,
-    filepath TEXT UNIQUE
+    filepath TEXT UNIQUE,
+    thumbnail TEXT
 )
 """)
 
