@@ -1,6 +1,7 @@
 import sqlite3
 import sys
 import hashlib
+import os
 
 def hash_password(password):
     """パスワードをハッシュ化（簡易版。本番はbcryptを使用）"""
@@ -30,7 +31,13 @@ try:
         VALUES (?, ?)
     """, (USERNAME, hashed_password))
     conn.commit()
+    
+    # ユーザーディレクトリを作成
+    user_dir = f"/home/sena/SoundCloud/{USERNAME}"
+    os.makedirs(user_dir, exist_ok=True)
+    
     print(f"User '{USERNAME}' created successfully!")
+    print(f"Music directory created: {user_dir}")
 except sqlite3.IntegrityError:
     print(f"User '{USERNAME}' already exists!")
 finally:

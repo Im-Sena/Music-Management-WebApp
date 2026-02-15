@@ -32,7 +32,113 @@ def get_current_username():
     return session.get("username")
 
 
-# ======================================================# ======================================================
+# ======================================================
+# ======================================================
+# ユーザー登録画面
+# ======================================================
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+        
+        # バリデーション
+        if not username or not password:
+            return """
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                .error { color: #dc3545; margin-bottom: 20px; }
+            </style>
+            <div class="error">
+                <h2>Error</h2>
+                <p>Username and password are required</p>
+                <a href="/register">Back to Register</a>
+            </div>
+            """
+        
+        if password != confirm_password:
+            return """
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                .error { color: #dc3545; margin-bottom: 20px; }
+            </style>
+            <div class="error">
+                <h2>Error</h2>
+                <p>Passwords do not match</p>
+                <a href="/register">Back to Register</a>
+            </div>
+            """
+        
+        conn = sqlite3.connect("music.db")
+        c = conn.cursor()
+        
+        try:
+            hashed_password = hash_password(password)
+            c.execute("""
+                INSERT INTO users (username, password)
+                VALUES (?, ?)
+            """, (username, hashed_password))
+            conn.commit()
+            
+            # ユーザーディレクトリを作成
+            user_dir = f"/home/sena/SoundCloud/{username}"
+            os.makedirs(user_dir, exist_ok=True)
+            
+            conn.close()
+            
+            return """
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                .success { color: #28a745; }
+            </style>
+            <div class="success">
+                <h2>Registration Successful!</h2>
+                <p>User created successfully. You can now log in.</p>
+                <a href="/login">Go to Login</a>
+            </div>
+            """
+        except sqlite3.IntegrityError:
+            conn.close()
+            return """
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                .error { color: #dc3545; margin-bottom: 20px; }
+            </style>
+            <div class="error">
+                <h2>Error</h2>
+                <p>Username already exists</p>
+                <a href="/register">Back to Register</a>
+            </div>
+            """
+    
+    # 登録フォームを表示
+    return """
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .register-form { max-width: 300px; margin: 0 auto; }
+        input { display: block; width: 100%; margin: 10px 0; padding: 8px; }
+        button { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #218838; }
+        .login-link { margin-top: 20px; text-align: center; }
+        .login-link a { color: #007bff; text-decoration: none; }
+    </style>
+    <h1>Music Management - Register</h1>
+    <div class="register-form">
+        <form method="post">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <input type="password" name="confirm_password" placeholder="Confirm Password" required>
+            <button type="submit">Register</button>
+        </form>
+        <div class="login-link">
+            Already have an account? <a href="/login">Login here</a>
+        </div>
+    </div>
+    """
+
+
+# ======================================================
 # ログイン画面
 # ======================================================
 @app.route("/login", methods=["GET", "POST"])
@@ -67,8 +173,11 @@ def login():
         body { font-family: Arial, sans-serif; margin: 40px; }
         .login-form { max-width: 300px; margin: 0 auto; }
         input { display: block; width: 100%; margin: 10px 0; padding: 8px; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; }
         button:hover { background: #0056b3; }
+        .register-link { margin-top: 20px; text-align: center; }
+        .register-link a { color: #007bff; text-decoration: none; }
+        .register-link a:hover { text-decoration: underline; }
     </style>
     <h1>Music Management - Login</h1>
     <div class="login-form">
@@ -77,6 +186,9 @@ def login():
             <input type="password" name="password" placeholder="Password" required>
             <button type="submit">Login</button>
         </form>
+        <div class="register-link">
+            Don't have an account? <a href="/register">Register here</a>
+        </div>
     </div>
     """
 
