@@ -377,7 +377,9 @@ def download(id):
     conn.close()
 
     if result:
-        return send_file(result[0], as_attachment=True)
+        # stream=true の場合はインラインで再生（ダウンロードではない）
+        stream = request.args.get("stream", "false").lower() == "true"
+        return send_file(result[0], as_attachment=not stream, mimetype="audio/mpeg")
 
     return "File not found", 404
 
