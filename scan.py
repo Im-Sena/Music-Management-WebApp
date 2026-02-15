@@ -1,20 +1,47 @@
 import os
 import sqlite3
+import sys
 # mp3からメタデータを読み込むためのライブラリ
 from mutagen.id3 import ID3
 
-#スキャン対象ディレクトリ
-MUSIC_DIR = "/home/sena/SoundCloud/test/"
+# コマンドライン引数からユーザー名を取得
+if len(sys.argv) < 2:
+    print("Usage: python scan.py <username> [music_directory]")
+    print("Example: python scan.py sena /home/sena/SoundCloud/sena/")
+    sys.exit(1)
 
-#サムネイル保存先（Flaskのstatic配下）
-THUMB_DIR = "static/thumbnails"
+USERNAME = sys.argv[1]
 
-#サムネ保存フォルダが無ければ作る
+# 音楽ディレクトリはコマンドラインで指定、なければデフォルト
+if len(sys.argv) >= 3:
+    MUSIC_DIR = sys.argv[2]
+else:
+    MUSIC_DIR = f"/home/sena/SoundCloud/{USERNAME}/"
+
+# サムネイル保存先（音楽ディレクトリ直下）
+THUMB_DIR = os.path.join(MUSIC_DIR, "thumbnails")
+
+# サムネ保存フォルダが無ければ作る
 os.makedirs(THUMB_DIR, exist_ok=True)
 
-#SQLiteに接続（無ければ作られる）
+# SQLiteに接続
 conn = sqlite3.connect("music.db")
 c = conn.cursor()
+
+# ユーザーが存在するか確認
+c.execute("SELECT id FROM users WHERE username = ?", (USERNAME,))
+user = c.fetchone()
+
+if not user:
+    print(f"User '{USERNAME}' not found in database.")
+    print("Please create the user first using: python add_user.py <username>")
+    conn.close()
+    sys.exit(1)
+
+user_id = user[0]
+
+print(f"Scanning music for user: {USERNAME}")
+print(f"Music directory: {MUSIC_DIR}")
 
 # ディレクトリを再帰的に探索
 for root, _, files in os.walk(MUSIC_DIR):
@@ -69,12 +96,12 @@ for root, _, files in os.walk(MUSIC_DIR):
                         img.write(apic.data)
 
                 # SQLクエリ実行
-                # すでに同じfilepathがあれば無視
+                # すでに同じuser_idとfilepathがあれば無視
                 c.execute("""
                     INSERT OR IGNORE INTO songs
-                    (title, artist, album, year, genre, filepath, thumbnail)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (title, artist, album, year, genre, path, thumbnail_path))
+                    (user_id, title, artist, album, year, genre, filepath, thumbnail)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (user_id, title, artist, album, year, genre, path, thumbnail_path))
 
                 print(f"Added: {title}")
 

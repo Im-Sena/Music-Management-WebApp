@@ -4,21 +4,33 @@ conn = sqlite3.connect("music.db")
 #sqlを実行するためのカーソル
 c = conn.cursor()
 
+# ユーザーテーブル
 c.execute("""
-CREATE TABLE songs (
+CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
+# 曲テーブル（user_idを追加）
+c.execute("""
+CREATE TABLE IF NOT EXISTS songs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
     title TEXT,
     artist TEXT,
     album TEXT,
     year TEXT,
     genre TEXT,
-    filepath TEXT UNIQUE,
-    thumbnail TEXT
+    filepath TEXT NOT NULL,
+    thumbnail TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    UNIQUE(user_id, filepath)
 )
 """)
-
-#INTEGER PRIMARY KEY AUTOINCREMENT　は自動で増える番号
-#filepath TEXT UNIQUE -> 同じ曲を2回登録できない。
 
 #変更を確定
 conn.commit()
