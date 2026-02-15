@@ -1,5 +1,5 @@
 # Flask本体と必要な機能を読み込む
-from flask import Flask, request, send_file, abort, session, redirect, url_for
+from flask import Flask, request, send_file, abort, session, redirect, url_for, render_template
 
 # SQLiteデータベース操作用
 import sqlite3
@@ -8,12 +8,27 @@ import sqlite3
 import os
 import hashlib
 
+# スケジューラー
+from apscheduler.schedulers.background import BackgroundScheduler
+from download_service import run_scheduled_downloads
 
 # ==============================
 # Flaskアプリを作成
 # ==============================
 app = Flask(__name__)
 app.secret_key = "your-secret-key-change-this"  # 本番環境では環境変数から読み込む
+
+# APScheduler 設定
+scheduler = BackgroundScheduler()
+scheduler.add_job(
+    func=run_scheduled_downloads,
+    trigger="cron",
+    hour=0,  # 毎日午前0時
+    minute=0,
+    id="soundcloud_download",
+    name="SoundCloud daily download"
+)
+scheduler.start()
 
 
 # ==============================
@@ -38,12 +53,17 @@ def get_current_username():
 # ======================================================
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    # POST: フォーム送信処理
     if request.method == "POST":
+        # フォームから入力値を取得（空文字列がデフォルト値）
         username = request.form.get("username", "")
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
+        # SoundCloud URLは任意（後で /profile から追加可能）
+        soundcloud_url = request.form.get("soundcloud_url", "")
         
-        # バリデーション
+        # === バリデーション ===
+        # ユーザー名またはパスワードが空でないか確認
         if not username or not password:
             return """
             <style>
@@ -57,6 +77,7 @@ def register():
             </div>
             """
         
+        # パスワードと確認パスワードが一致しているか確認
         if password != confirm_password:
             return """
             <style>
@@ -70,34 +91,81 @@ def register():
             </div>
             """
         
+        # === データベース処理 ===
         conn = sqlite3.connect("music.db")
         c = conn.cursor()
         
         try:
+            # パスワードをSHA256でハッシュ化
             hashed_password = hash_password(password)
+            
+            # ユーザーレコードを作成（soundcloud_urlは任意、空の場合はNULL）
             c.execute("""
-                INSERT INTO users (username, password)
-                VALUES (?, ?)
-            """, (username, hashed_password))
+                INSERT INTO users (username, password, soundcloud_url)
+                VALUES (?, ?, ?)
+            """, (username, hashed_password, soundcloud_url if soundcloud_url else None))
             conn.commit()
             
-            # ユーザーディレクトリを作成
+            # 新しく作成されたユーザーのIDを取得（バックグラウンド処理で必要）
+            c.execute("SELECT id FROM users WHERE username = ?", (username,))
+            user_id = c.fetchone()[0]
+            
+            # === ユーザーディレクトリ作成 ===
+            # ダウンロード音楽の保存先ディレクトリを作成
             user_dir = f"/home/sena/SoundCloud/{username}"
             os.makedirs(user_dir, exist_ok=True)
             
             conn.close()
             
-            return """
-            <style>
-                body { font-family: Arial, sans-serif; margin: 40px; }
-                .success { color: #28a745; }
-            </style>
-            <div class="success">
-                <h2>Registration Successful!</h2>
-                <p>User created successfully. You can now log in.</p>
-                <a href="/login">Go to Login</a>
-            </div>
-            """
+            # === バックグラウンドダウンロード処理 ===
+            # SoundCloud URLが指定されていれば、すぐにダウンロード開始
+            if soundcloud_url:
+                # ローカルインポート（ここでのみ使用するため）
+                from threading import Thread
+                from download_service import download_and_scan_user
+                
+                # バックグラウンドスレッドを作成
+                # daemon=True で、メインアプリ終了時に自動終了
+                # ユーザーはレスポンスを待つ必要なし（非ブロッキング）
+                download_thread = Thread(
+                    target=download_and_scan_user,
+                    args=(user_id, username, soundcloud_url),
+                    daemon=True
+                )
+                # スレッド開始：yt-dlp → scan.py → メタデータ抽出 → thumbnail保存 → DB更新
+                download_thread.start()
+                
+                # ダウンロード中である旨をユーザーに通知
+                success_msg = """
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; }
+                    .success { color: #28a745; }
+                </style>
+                <div class="success">
+                    <h2>Registration Successful!</h2>
+                    <p>User created successfully.</p>
+                    <p><strong>Your SoundCloud likes are being downloaded in the background.</strong></p>
+                    <p>Check your profile later to see the download progress.</p>
+                    <a href="/login">Go to Login</a>
+                </div>
+                """
+            # URLが指定されなかった場合は、後で /profile から追加できることを説明
+            else:
+                success_msg = """
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; }
+                    .success { color: #28a745; }
+                </style>
+                <div class="success">
+                    <h2>Registration Successful!</h2>
+                    <p>User created successfully. You can now log in.</p>
+                    <p>You can add your SoundCloud URL later in your profile to start downloading.</p>
+                    <a href="/login">Go to Login</a>
+                </div>
+                """
+            
+            return success_msg
+        # ユーザー名が既に存在する場合（UNIQUE制約に引っかかった）
         except sqlite3.IntegrityError:
             conn.close()
             return """
@@ -112,30 +180,8 @@ def register():
             </div>
             """
     
-    # 登録フォームを表示
-    return """
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .register-form { max-width: 300px; margin: 0 auto; }
-        input { display: block; width: 100%; margin: 10px 0; padding: 8px; }
-        button { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #218838; }
-        .login-link { margin-top: 20px; text-align: center; }
-        .login-link a { color: #007bff; text-decoration: none; }
-    </style>
-    <h1>Music Management - Register</h1>
-    <div class="register-form">
-        <form method="post">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <input type="password" name="confirm_password" placeholder="Confirm Password" required>
-            <button type="submit">Register</button>
-        </form>
-        <div class="login-link">
-            Already have an account? <a href="/login">Login here</a>
-        </div>
-    </div>
-    """
+    # GET: 登録フォーム画面を表示（テンプレートから）
+    return render_template("register.html")
 
 
 # ======================================================
@@ -167,28 +213,104 @@ def login():
             <a href="/login">Back to Login</a>
             """
     
-    # ログイン画面を表示
-    return """
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .login-form { max-width: 300px; margin: 0 auto; }
-        input { display: block; width: 100%; margin: 10px 0; padding: 8px; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; }
-        button:hover { background: #0056b3; }
-        .register-link { margin-top: 20px; text-align: center; }
-        .register-link a { color: #007bff; text-decoration: none; }
-        .register-link a:hover { text-decoration: underline; }
-    </style>
-    <h1>Music Management - Login</h1>
-    <div class="login-form">
-        <form method="post">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
-        <div class="register-link">
-            Don't have an account? <a href="/register">Register here</a>
+    # ログイン画面を表示（テンプレートから）
+    return render_template("login.html")
+
+
+# ======================================================
+# プロフィールページ
+# ======================================================
+@app.route("/profile", methods=["GET", "POST"])
+def profile():
+    # ログインしているか確認
+    if not get_current_user_id():
+        return redirect(url_for("login"))
+    
+    user_id = get_current_user_id()
+    username = get_current_username()
+    
+    if request.method == "POST":
+        soundcloud_url = request.form.get("soundcloud_url", "")
+        
+        conn = sqlite3.connect("music.db")
+        c = conn.cursor()
+        c.execute("""
+            UPDATE users SET soundcloud_url = ? WHERE id = ?
+        """, (soundcloud_url, user_id))
+        conn.commit()
+        
+        # 現在のURLを取得
+        c.execute("SELECT soundcloud_url FROM users WHERE id = ?", (user_id,))
+        current_url = c.fetchone()[0]
+        conn.close()
+        
+        return f"""
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 40px; }}
+            .container {{ max-width: 600px; margin: 0 auto; }}
+            .success {{ color: #28a745; margin-bottom: 20px; }}
+            input {{ display: block; width: 100%; margin: 10px 0; padding: 8px; }}
+            button {{ padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }}
+            button:hover {{ background: #0056b3; }}
+            .back-link {{ margin-top: 20px; }}
+            .back-link a {{ color: #007bff; text-decoration: none; }}
+        </style>
+        <div class="container">
+            <h1>Profile - {username}</h1>
+            <div class="success">✓ SoundCloud URL updated successfully!</div>
+            <p>Current URL: <strong>{current_url if current_url else 'Not set'}</strong></p>
+            <p>Your music will be automatically downloaded from this URL once per day.</p>
+            <div class="back-link">
+                <a href="/">Back to Music Library</a>
+            </div>
         </div>
+        """
+    
+    # GET リクエスト：プロフィール表示
+    conn = sqlite3.connect("music.db")
+    c = conn.cursor()
+    c.execute("""
+        SELECT soundcloud_url, last_download FROM users WHERE id = ?
+    """, (user_id,))
+    result = c.fetchone()
+    conn.close()
+    
+    soundcloud_url = result[0] if result and result[0] else ""
+    last_download = result[1] if result and result[1] else "Never"
+    
+    return f"""
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 40px; }}
+        .container {{ max-width: 600px; margin: 0 auto; }}
+        .form-group {{ margin-bottom: 20px; }}
+        label {{ display: block; margin-bottom: 5px; font-weight: bold; }}
+        input {{ display: block; width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; }}
+        button {{ padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; }}
+        button:hover {{ background: #0056b3; }}
+        .info {{ background: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
+        .info p {{ margin: 10px 0; }}
+        .back-link {{ margin-top: 20px; }}
+        .back-link a {{ color: #007bff; text-decoration: none; }}
+    </style>
+    <div class="container">
+        <h1>Profile - {username}</h1>
+        
+        <div class="info">
+            <p><strong>Last Download:</strong> {last_download}</p>
+            <p>Your music will be automatically downloaded from your SoundCloud likes once per day.</p>
+        </div>
+        
+        <form method="post">
+            <div class="form-group">
+                <label for="soundcloud_url">SoundCloud Likes URL:</label>
+                <input type="url" id="soundcloud_url" name="soundcloud_url" 
+                       placeholder="https://soundcloud.com/your-username/likes" 
+                       value="{soundcloud_url}">
+                <small>Example: https://soundcloud.com/your-username/likes</small>
+            </div>
+            <button type="submit">Save SoundCloud URL</button>
+            <a href="/" style="color: #007bff; text-decoration: none;">Back to Music Library</a>
+        </form>
     </div>
     """
 
@@ -262,6 +384,7 @@ def index():
         <h1>Music Management</h1>
         <div>
             <span class="user-info">Logged in as: <strong>{username}</strong></span>
+            <a href="/profile" style="color: #007bff; text-decoration: none; margin-left: 15px;">Profile</a>
             <a href="/logout" class="logout">Logout</a>
         </div>
     </div>
@@ -385,4 +508,7 @@ def download(id):
 # Flaskサーバー起動
 # ======================================================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    try:
+        app.run(host="0.0.0.0", port=5000, debug=True)
+    finally:
+        scheduler.shutdown()
