@@ -315,130 +315,44 @@ def profile():
     """
 
 
-# ======================================================
-# トップページ（曲一覧・検索）
-# ======================================================
+# === トップページ（曲一覧・検索）===
 @app.route("/")
 def index():
     # ログインしているか確認
     if not get_current_user_id():
         return redirect(url_for("login"))
 
-    # URLの ?q=xxx を取得
+    # URLの ?q=xxx を取得（検索キーワード）
     q = request.args.get("q", "")
     
     user_id = get_current_user_id()
-    username = get_current_username()
 
     # データベースに接続
     conn = sqlite3.connect("music.db")
-
-    # SQLを実行するためのカーソル作成
     c = conn.cursor()
 
-    # ----------------------------
-    # 検索処理
-    # ----------------------------
+    # === 検索処理 ===
     if q:
-        # ユーザーのみの曲を検索
+        # ユーザーの曲から検索
         c.execute("""
             SELECT id, title, artist, album, year, genre, filepath, thumbnail FROM songs
             WHERE user_id = ? AND (title LIKE ? OR artist LIKE ? OR album LIKE ?)
+            ORDER BY title ASC
         """, (user_id, f"%{q}%", f"%{q}%", f"%{q}%"))
     else:
-        # 検索ワードが無い場合は最大100件表示（ユーザーのみ）
+        # 検索ワードが無い場合は全て表示
         c.execute("""
             SELECT id, title, artist, album, year, genre, filepath, thumbnail FROM songs
             WHERE user_id = ?
-            LIMIT 100
+            ORDER BY title ASC
         """, (user_id,))
 
     # SQL実行結果を全て取得
     songs = c.fetchall()
-
-    # データベース接続終了
     conn.close()
 
-    # ----------------------------
-    # HTML生成（文字列として組み立て）
-    # ----------------------------
-    html = f"""
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 20px; }}
-        h1 {{ color: #333; }}
-        .header {{ display: flex; justify-content: space-between; align-items: center; }}
-        .user-info {{ font-size: 0.9em; color: #666; }}
-        .search-form {{ margin-bottom: 20px; }}
-        input[type="text"] {{ padding: 8px; width: 300px; }}
-        button {{ padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }}
-        button:hover {{ background: #0056b3; }}
-        .logout {{ background: #dc3545; padding: 5px 10px; text-decoration: none; color: white; border-radius: 3px; }}
-        ul {{ list-style: none; padding: 0; }}
-        li {{ margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; }}
-        .song-info {{ display: flex; align-items: center; gap: 15px; }}
-        .thumbnail {{ width: 50px; height: 50px; object-fit: cover; border-radius: 5px; }}
-        .song-details {{ flex-grow: 1; }}
-        .artist {{ color: #666; font-size: 0.9em; }}
-    </style>
-    <div class="header">
-        <h1>Music Management</h1>
-        <div>
-            <span class="user-info">Logged in as: <strong>{username}</strong></span>
-            <a href="/profile" style="color: #007bff; text-decoration: none; margin-left: 15px;">Profile</a>
-            <a href="/logout" class="logout">Logout</a>
-        </div>
-    </div>
-    
-    <div class="search-form">
-        <form method="get">
-            <input type="text" name="q" placeholder="Search by title, artist, or album" value="{q}">
-            <button type="submit">Search</button>
-        </form>
-    </div>
-    
-    <ul>
-    """
-
-    # 取得した曲を1件ずつ処理
-    for song in songs:
-
-        # song の中身
-        # song[0] = id
-        # song[1] = title
-        # song[2] = artist
-        # song[3] = album
-        # song[4] = year
-        # song[5] = genre
-        # song[6] = filepath
-        # song[7] = thumbnail
-
-        song_id, title, artist, album, year, genre, filepath, thumbnail = song
-
-        thumbnail_html = ""
-
-        # サムネイルが存在する場合のみ表示
-        if thumbnail:
-            # サムネイルパスはフルパス: /home/sena/SoundCloud/username/thumbnails/image.jpg
-            thumbnail_html = f"<img src='/image/{song_id}' class='thumbnail'>"
-
-        # 曲情報をHTMLに追加
-        html += f"""
-        <li>
-            <div class="song-info">
-                {thumbnail_html}
-                <div class="song-details">
-                    <b>{title}</b><br>
-                    <span class="artist">{artist}</span>
-                    {f"<br><small>{album} ({year})</small>" if album != "Unknown" else ""}
-                </div>
-                <a href="/download/{song_id}">Download</a>
-            </div>
-        """
-
-    html += "</ul>"
-
-    # 最終的にHTMLをブラウザへ返す
-    return html
+    # テンプレートにデータを渡して返す
+    return render_template("library.html", songs=songs, q=q)
 
 
 # ======================================================
@@ -502,6 +416,75 @@ def download(id):
         return send_file(result[0], as_attachment=True)
 
     return "File not found", 404
+
+
+# ======================================================
+# プレイヤーページ
+# ======================================================
+@app.route("/player/<int:song_id>")
+def player(song_id):
+    """
+    音楽再生ページ
+    
+    指定された曲を再生するページを表示
+    次の曲・前の曲への移動もサポート
+    """
+    # ログインしているか確認
+    if not get_current_user_id():
+        return redirect(url_for("login"))
+
+    user_id = get_current_user_id()
+
+    conn = sqlite3.connect("music.db")
+    c = conn.cursor()
+
+    # === 指定された曲の情報を取得 ===
+    c.execute("""
+        SELECT id, title, artist, album, year, genre, filepath, thumbnail FROM songs
+        WHERE id = ? AND user_id = ?
+    """, (song_id, user_id))
+    
+    song = c.fetchone()
+
+    if not song:
+        conn.close()
+        return "Song not found", 404
+
+    # === ユーザーの曲を全て取得（プレイリスト用） ===
+    c.execute("""
+        SELECT id, title, artist, album, year, genre, filepath, thumbnail FROM songs
+        WHERE user_id = ?
+        ORDER BY title ASC
+    """, (user_id,))
+    
+    all_songs = c.fetchall()
+    conn.close()
+
+    # === 前の曲・次の曲を取得 ===
+    current_index = None
+    prev_song = None
+    next_song = None
+
+    for idx, s in enumerate(all_songs):
+        if s[0] == song_id:
+            current_index = idx
+            if idx > 0:
+                prev_song = all_songs[idx - 1]
+            if idx < len(all_songs) - 1:
+                next_song = all_songs[idx + 1]
+            break
+
+    total_songs = len(all_songs)
+
+    # テンプレートにデータを渡す
+    return render_template(
+        "player.html",
+        song=song,
+        prev_song=prev_song,
+        next_song=next_song,
+        current_index=current_index,
+        total_songs=total_songs
+    )
 
 
 # ======================================================

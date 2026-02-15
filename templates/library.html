@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Music Library - Music Management{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/library.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="library-page">
+    <!-- ヘッダー部分 -->
+    <div class="header">
+        <h1>🎵 Music Library</h1>
+        <div class="header-right">
+            <span class="user-info">Logged in as: <strong>{{ session.get('username') }}</strong></span>
+            <a href="/profile" class="nav-link">Profile</a>
+        </div>
+    </div>
+
+    <!-- 検索フォーム -->
+    <div class="search-section">
+        <form method="get" class="search-form">
+            <input type="text" name="q" placeholder="Search by title, artist, or album..." value="{{ q }}">
+            <button type="submit" class="btn btn-primary">Search</button>
+            {% if q %}
+                <a href="/" class="btn btn-secondary">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- 曲がない場合 -->
+    {% if not songs %}
+    <div class="empty-state">
+        <p>📭 No songs found</p>
+        <p><a href="/profile">Add your SoundCloud URL to start downloading</a></p>
+    </div>
+    {% else %}
+    <!-- 曲一覧 -->
+    <div class="songs-container">
+        {% for song in songs %}
+        <div class="song-card">
+            <!-- サムネイル -->
+            {% if song[7] %}
+            <div class="song-thumbnail">
+                <img src="/image/{{ song[0] }}" alt="Album art">
+                <div class="play-overlay">
+                    <a href="/player/{{ song[0] }}" class="play-button">▶ Play</a>
+                </div>
+            </div>
+            {% else %}
+            <div class="song-thumbnail no-image">
+                <div class="play-overlay">
+                    <a href="/player/{{ song[0] }}" class="play-button">▶ Play</a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 曲情報 -->
+            <div class="song-info">
+                <h3 class="song-title">{{ song[1] }}</h3>
+                <p class="song-artist">{{ song[2] }}</p>
+                {% if song[3] != "Unknown" %}
+                <p class="song-album">
+                    <small>{{ song[3] }}{% if song[4] %} ({{ song[4] }}){% endif %}</small>
+                </p>
+                {% endif %}
+                {% if song[5] %}
+                <p class="song-genre"><small>Genre: {{ song[5] }}</small></p>
+                {% endif %}
+            </div>
+
+            <!-- アクション -->
+            <div class="song-actions">
+                <a href="/player/{{ song[0] }}" class="btn btn-sm btn-primary">Play</a>
+                <a href="/download/{{ song[0] }}" class="btn btn-sm btn-secondary">Download</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <p class="song-count">Total: {{ songs|length }} songs</p>
+    {% endif %}
+</div>
+{% endblock %}
