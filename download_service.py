@@ -62,7 +62,8 @@ def download_and_scan_user(user_id, username, soundcloud_url):
     # --embed-thumbnail: MP3にサムネイル埋め込み
     # --embed-metadata: ID3タグ埋め込み
     # --audio-format mp3, --audio-quality 128K: MP3 128kbpsで出力
-    # -o: 出力ファイル名形式（アーティスト - 曲名.mp3）
+    # --continue: ダウンロード中断時に続行
+    # -o: 出力ファイル名形式（アーティスト/アップローダー - 曲名.mp3）
     cmd = [
         "yt-dlp",
         "-x",
@@ -70,7 +71,8 @@ def download_and_scan_user(user_id, username, soundcloud_url):
         "--embed-metadata",
         "--audio-format", "mp3",
         "--audio-quality", "128K",
-        "-o", os.path.join(music_dir, "%(artist)s - %(title)s.%(ext)s"),
+        "--continue",
+        "-o", os.path.join(music_dir, "%(artist,uploader)s - %(title)s.%(ext)s"),
         soundcloud_url
     ]
     

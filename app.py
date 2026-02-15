@@ -24,6 +24,9 @@ init_database()
 app = Flask(__name__)
 app.secret_key = "your-secret-key-change-this"  # 本番環境では環境変数から読み込む
 
+# ========== サイト全体のパスワード保護 ==========
+SITE_PASSWORD = "morishita"  # 環境変数から読み込むことを推奨
+
 # APScheduler 設定
 scheduler = BackgroundScheduler()
 scheduler.add_job(
@@ -51,6 +54,53 @@ def get_current_user_id():
 def get_current_username():
     """セッションから現在のユーザー名を取得"""
     return session.get("username")
+
+def is_site_access_allowed():
+    """サイトアクセスが許可されているか確認"""
+    return session.get("site_password_verified", False)
+
+
+    """セッションから現在のユーザー名を取得"""
+    return session.get("username")
+
+
+# ======================================================
+# サイト全体パスワード保護
+# ======================================================
+@app.route("/site-password", methods=["GET", "POST"])
+def site_password():
+    """
+    サイト全体を保護するパスワード入力ページ
+    正しいパスワードを入力すると site_password_verified フラグが設定される
+    """
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        
+        if password == SITE_PASSWORD:
+            # パスワードが正しい場合
+            session["site_password_verified"] = True
+            return redirect(url_for("login"))
+        else:
+            # パスワードが間違っている場合
+            return render_template("site_password.html", error=True)
+    
+    # GET: パスワード入力フォームを表示
+    return render_template("site_password.html", error=False)
+
+
+@app.before_request
+def before_request():
+    """
+    全リクエスト前にサイトアクセス権限をチェック
+    パスワード入力ページとログアウトページ以外は保護
+    """
+    # パスワード入力ページ・ログアウト・静的ファイルはチェックをスキップ
+    if request.endpoint in ["site_password", "logout", "static"]:
+        return
+    
+    # サイトアクセスが許可されていない場合はパスワード入力ページへリダイレクト
+    if not is_site_access_allowed():
+        return redirect(url_for("site_password"))
 
 
 # ======================================================
