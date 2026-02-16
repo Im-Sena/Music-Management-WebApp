@@ -7,10 +7,12 @@ import sqlite3
 # パス操作やセキュリティチェック用
 import os
 import hashlib
+import threading
 
 # スケジューラー
 from apscheduler.schedulers.background import BackgroundScheduler
 from download_service import run_scheduled_downloads
+import download_service
 
 # DB初期化・マイグレーション
 from init_db import init_database
@@ -296,7 +298,16 @@ def profile():
         conn.commit()
         conn.close()
         
-        # 更新後、同じページにリダイレクト（更新完了メッセージを表示する場合は別途実装）
+        # URL が有効な場合、バックグラウンドでダウンロード開始
+        if soundcloud_url:
+            thread = threading.Thread(
+                target=download_service.download_and_scan_user,
+                args=(user_id, username, soundcloud_url)
+            )
+            thread.daemon = True
+            thread.start()
+        
+        # 更新後、同じページにリダイレクト
         return redirect(url_for("profile"))
     
     # GET リクエスト：プロフィール表示

@@ -25,13 +25,11 @@
         </div>
     </form>
     
-    {% if log_files_available %}
     <div class="logs-section">
         <h2>ダウンロード履歴</h2>
         <p>ダウンロード履歴を確認して、何がいつダウンロードされたかを確認します。</p>
         <a href="{{ url_for('view_logs') }}" class="btn-logs">ダウンロード履歴を表示</a>
     </div>
-    {% endif %}
 </div>
 
 <style>

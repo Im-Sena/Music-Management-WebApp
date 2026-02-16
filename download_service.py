@@ -54,11 +54,13 @@ def download_and_scan_user(user_id, username, soundcloud_url):
     # ユーザーのダウンロードディレクトリ
     music_dir = f"/home/sena/SoundCloud/{username}"
     
-    # === ログ出力 ===
-    log_message(username, f"Starting download - URL: {soundcloud_url}")
+    # ディレクトリが存在しなければ作成
+    os.makedirs(music_dir, exist_ok=True)
+    log_message(username, f"Download directory: {music_dir}")
     
     # === yt-dlp コマンド構築 ===
     # -x: 音声抽出（MP3等に変換）
+    # -f bestaudio: 最良の音声形式を自動選択（SoundCloud制限対策）
     # --embed-thumbnail: MP3にサムネイル埋め込み
     # --embed-metadata: ID3タグ埋め込み
     # --audio-format mp3, --audio-quality 128K: MP3 128kbpsで出力
@@ -67,27 +69,87 @@ def download_and_scan_user(user_id, username, soundcloud_url):
     cmd = [
         "yt-dlp",
         "-x",
+        "-f", "bestaudio",
         "--embed-thumbnail",
         "--embed-metadata",
         "--audio-format", "mp3",
         "--audio-quality", "128K",
         "--continue",
+        "--no-progress",
         "-o", os.path.join(music_dir, "%(artist,uploader)s - %(title)s.%(ext)s"),
         soundcloud_url
     ]
     
     try:
         # === Step 1: yt-dlp でダウンロード実行 ===
-        # timeout=3600 (1時間のタイムアウト)
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+        # リアルタイムでログ出力するため Popen を使用
+        log_message(username, "About to run yt-dlp command...")
         
-        # ダウンロードエラーチェック
-        if result.returncode != 0:
-            error_msg = result.stderr[:200]  # 最初の200字に制限
-            log_message(username, f"Download error: {error_msg}")
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
+        )
+        
+        # yt-dlp のリアルタイム出力を処理
+        output_lines = []
+        downloaded_count = 0
+        skipped_count = 0
+        
+        try:
+            for line in process.stdout:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                output_lines.append(line)
+                
+                # プレイリスト情報
+                if 'Downloading' in line and 'items of' in line:
+                    log_message(username, f"Playlist: {line}")
+                
+                # ダウンロード/スキップ判定
+                if line.startswith('[download]'):
+                    # スキップされた曲
+                    if 'has already been' in line or 'already fully downloaded' in line:
+                        if '.mp3' in line:
+                            file_part = line.split('[download]')[-1].strip()
+                            log_message(username, f"Skipped: {file_part}")
+                        skipped_count += 1
+                    # プレイリスト完了
+                    elif 'Finished downloading playlist' in line:
+                        log_message(username, f"Playlist complete: {line}")
+                    # ダウンロード完了
+                    elif '.mp3' in line and 'has already' not in line and 'Finished' not in line:
+                        file_part = line.split('[download]')[-1].strip()
+                        log_message(username, f"Downloaded: {file_part}")
+                        downloaded_count += 1
+            
+            # プロセス完了待機 (timeout=18000 は5時間)
+            result_returncode = process.wait(timeout=18000)
+            
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            log_message(username, "Download timeout (exceeded 5 hour limit)")
+            return
+        
+        log_message(username, f"yt-dlp finished - returncode: {result_returncode}")
+        
+        # エラーチェック
+        if result_returncode != 0:
+            log_message(username, f"Download error (returncode: {result_returncode})")
             return
         
         log_message(username, "Download successful via yt-dlp")
+        log_message(username, f"Output lines: {len(output_lines)}")
+        
+        # 最終サマリー
+        if downloaded_count > 0 or skipped_count > 0:
+            log_message(username, f"Summary: {downloaded_count} downloaded, {skipped_count} skipped")
         
         # === Step 2: scan.py を実行して メタデータ抽出 & DB登録 ===
         # scan.py が MP3ファイルのID3タグを読み取り、DBに登録
@@ -113,12 +175,14 @@ def download_and_scan_user(user_id, username, soundcloud_url):
         
         log_message(username, "Download and scan completed successfully!")
         
-    # ダウンロードが1時間を超えた場合のタイムアウト処理
+    # ダウンロードが5時間を超えた場合のタイムアウト処理
     except subprocess.TimeoutExpired:
-        log_message(username, "Download timeout (exceeded 1 hour limit)")
+        log_message(username, "Download timeout (exceeded 5 hour limit)")
     # その他のエラーをキャッチ（ファイルI/O等）
     except Exception as e:
-        log_message(username, f"Error: {str(e)}")
+        import traceback
+        log_message(username, f"Exception occurred: {type(e).__name__}: {str(e)}")
+        log_message(username, f"Traceback: {traceback.format_exc()}")
 
 
 # ====================================================================
